@@ -37,7 +37,7 @@ nav button {
 }
 nav button:hover { color: var(--txt); }
 nav button.on { color: #fff; border-color: var(--cor); background: color-mix(in srgb, var(--cor) 22%, var(--card)); }
-nav button .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--dbd); margin-left: 6px; vertical-align: middle; box-shadow: 0 0 8px var(--dbd); }
+nav button .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
 
 .status { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 14px; color: var(--mut); }
 .pill { padding: 5px 12px; border-radius: 99px; font-weight: 700; font-size: 13px; letter-spacing: .5px; border: 1px solid var(--line); background: var(--card); }
@@ -48,19 +48,39 @@ nav button .dot { display: inline-block; width: 8px; height: 8px; border-radius:
 .big { font-family: 'Evil Vampire', Georgia, serif; font-size: 34px; line-height: 1.1; word-break: break-word; }
 .who { color: var(--mut); margin-top: 4px; font-size: 15px; }
 .tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--cor) 40%, transparent); vertical-align: middle; }
+.tag.out { background: transparent; border: 1px solid var(--line); color: var(--mut); }
 
-ol { list-style: none; counter-reset: n; }
-ol li { counter-increment: n; display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+ol { list-style: none; }
+ol li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
 ol li:first-child { border-top: 0; }
-ol li::before { content: counter(n); min-width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; background: var(--card2); color: var(--cor); }
-.nm { font-weight: 700; font-size: 17px; }
+.n { min-width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; background: var(--card2); color: var(--cor); }
+.nm { flex: 1; min-width: 0; font-weight: 700; font-size: 17px; }
 .nm small { display: block; font-weight: 400; color: var(--mut); font-size: 14px; }
+ol li.sepl { display: block; padding: 12px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--mut); border-top: 1px dashed var(--line); }
+ol li.risc { opacity: .5; }
+ol li.risc .n { color: var(--mut); }
 .vazio { color: var(--mut); text-align: center; padding: 10px 0; }
 
 .como { font-size: 15px; line-height: 1.5; color: var(--mut); }
 .como b { color: var(--txt); }
 .btn { display: block; text-align: center; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--cor); color: #fff; font-weight: 700; text-decoration: none; letter-spacing: 1px; }
 footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24px; }
+
+/* modo admin (só aparece com ?admin no link e a senha certa) */
+.adm { display: flex; gap: 6px; margin-left: auto; }
+.adm button, .admForm button {
+  background: var(--card2); border: 1px solid var(--line); color: var(--txt);
+  font: 700 12px 'Carlito', Calibri, sans-serif; letter-spacing: 1px;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+.adm button:hover, .admForm button:hover { border-color: var(--cor); }
+.adm button[data-acao="aceito"] { background: var(--cor); border-color: var(--cor); color: #fff; }
+.adm-wait { margin-left: auto; font-size: 13px; color: var(--mut); }
+.topo-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.topo-row > div:first-child { flex: 1; min-width: 0; }
+.admForm { display: flex; gap: 8px; margin-top: 10px; }
+.admForm input { flex: 1; min-width: 0; background: var(--card2); border: 1px solid var(--line); color: var(--txt); padding: 8px 10px; border-radius: 8px; font: 15px 'Carlito', Calibri, sans-serif; }
+.lnk { background: none; border: 0; color: var(--mut); text-decoration: underline; cursor: pointer; font: 13px 'Carlito', Calibri, sans-serif; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -71,9 +91,9 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
   </header>
 
   <nav id="tabs">
-    <button data-aba="dbd">DBD</button>
-    <button data-aba="over">OVER</button>
-    <button data-aba="flix">BIGOFLIX</button>
+    <button data-aba="dbd" data-nome="DBD">DBD</button>
+    <button data-aba="over" data-nome="OVER">OVER</button>
+    <button data-aba="flix" data-nome="BIGOFLIX">BIGOFLIX</button>
   </nav>
 
   <div class="status">
@@ -81,11 +101,26 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
     <span id="upd"></span>
   </div>
 
+  <div class="card" id="admBox" hidden>
+    <div class="lbl">MODO ADMIN</div>
+    <div class="como" id="admTxt"></div>
+    <div class="admForm" id="admForm">
+      <input id="admSenha" type="password" placeholder="senha do tracker" autocomplete="current-password">
+      <button id="admEntrar">ENTRAR</button>
+    </div>
+    <button class="lnk" id="admSair" hidden>sair do modo admin</button>
+  </div>
+
   <div id="topo"></div>
 
   <div class="card">
     <div class="lbl" id="filaLbl">NA FILA</div>
     <ol id="lista"></ol>
+  </div>
+
+  <div class="card" id="feitosCard" hidden>
+    <div class="lbl">FEITOS HOJE</div>
+    <ol id="feitos"></ol>
   </div>
 
   <div class="card">
@@ -103,6 +138,7 @@ const SUPABASE_URL = 'https://fglwlmuyfojabpilhcdc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZsrsSUmFlaPBKu_OeTGbMQ_zFKihTo4';   // a pública, que só lê
 const LIVEPIX      = 'https://livepix.gg/tiljhin';
 const ATUALIZAR_SEG = 5;    // de quanto em quanto tempo a página busca a fila
+const ADMIN_SEG     = 2;    // no modo admin, busca mais rápido
 const OFFLINE_MIN   = 30;   // sem atualização há X min = "live offline"
 
 const ABAS = {
@@ -113,11 +149,19 @@ const ABAS = {
   flix: { cor: '--flix', agora: 'FILME DA SEMANA', vazio: 'Nenhum pedido de filme ainda.',
           como: 'Mande um Pix de <b>R$ 15</b> pelo LivePix com a palavra <b>filme</b> e o nome do filme na mensagem.' }
 };
+// etiqueta de cada origem (igual ao HUD)
+const TAGS = { doacao: 'PIX', sub: 'SUB', resub: 'RESUB', gift: 'GIFT', pontos: 'SUCOS' };
 /* ================================================== */
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let dados = {}, aba = null, timer = null;
+
+// modo admin: link com ?admin · a senha fica salva só neste navegador
+const ADMIN = new URLSearchParams(location.search).has('admin');
+let senha = '';
+try { senha = localStorage.getItem('trkSenha') || ''; } catch (e) {}
+const pend = {}; // pedidos com clique enviado, esperando o HUD aplicar
 
 function haQuanto(iso) {
   const min = Math.floor((Date.now() - new Date(iso)) / 60000);
@@ -130,6 +174,18 @@ function haQuanto(iso) {
 // a aba só conta como "com dado" depois que o HUD mandou alguma coisa
 const temDado = d => d && Object.keys(d).length > 0;
 
+function tags(i) {
+  return (i.build ? '<span class="tag">BUILD</span>' : '')
+       + (TAGS[i.origem] ? `<span class="tag${i.origem === 'pontos' ? ' out' : ''}">${TAGS[i.origem]}</span>` : '');
+}
+
+function botoes(i, noTopo) {
+  if (!ADMIN || !senha || !i.id) return '';
+  if (pend[i.id] && Date.now() - pend[i.id] < 15000) return '<span class="adm-wait">enviando…</span>';
+  const b = (acao, txt) => `<button data-id="${esc(i.id)}" data-acao="${acao}">${txt}</button>`;
+  return `<div class="adm">${noTopo ? '' : b('aceito', 'ACEITO')}${b('feito', 'FEITO')}${b('recusado', 'RECUSADO')}</div>`;
+}
+
 function render() {
   if (!aba) return;
   const a = ABAS[aba], linha = dados[aba] || {}, d = linha.data || {};
@@ -137,10 +193,12 @@ function render() {
   const offline = !recebeu || !linha.updated_at || (Date.now() - new Date(linha.updated_at)) / 60000 > OFFLINE_MIN;
   document.documentElement.style.setProperty('--cor', `var(${a.cor})`);
 
+  // abas: pontinho na cor do jogo que está ativo na live
   document.querySelectorAll('#tabs button').forEach(b => {
     b.classList.toggle('on', b.dataset.aba === aba);
     const ativo = b.dataset.aba !== 'flix' && dados[b.dataset.aba]?.data?.ativo === true;
-    b.innerHTML = b.textContent.replace(/\s+$/, '') + (ativo ? '<span class="dot"></span>' : '');
+    const c = `var(${ABAS[b.dataset.aba].cor})`;
+    b.innerHTML = b.dataset.nome + (ativo ? `<span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span>` : '');
   });
 
   // status
@@ -157,22 +215,56 @@ function render() {
 
   // topo: AGORA (DBD/Over) ou filme da semana (BigoFlix)
   const top = aba === 'flix' ? d.filme : d.atual;
-  $('topo').innerHTML = top ? `
-    <div class="card">
-      <div class="lbl">${a.agora}</div>
-      <div class="big">${esc(aba === 'flix' ? top.titulo : top.escolha)}${top.build ? '<span class="tag">BUILD</span>' : ''}</div>
-      <div class="who">${aba === 'flix' ? esc(top.onde || '') : 'pedido de ' + esc(top.quem)}</div>
-    </div>` : '';
+  if (top) {
+    const titulo = aba === 'flix' ? top.titulo : top.escolha;
+    const who = aba === 'flix' ? (top.onde || (top.quem ? 'pedido de ' + top.quem : '')) : 'pedido de ' + top.quem;
+    $('topo').innerHTML = `
+      <div class="card">
+        <div class="lbl">${a.agora}</div>
+        <div class="topo-row">
+          <div>
+            <div class="big">${esc(titulo)}</div>
+            <div class="who">${esc(who)}${aba === 'flix' ? '' : tags(top)}</div>
+          </div>
+          ${botoes(top, true)}
+        </div>
+      </div>`;
+  } else $('topo').innerHTML = '';
 
-  // fila
+  // fila: pagos em cima, divisória, pedidos com SUCOS, e os recusados riscados no fim
   const fila = Array.isArray(d.fila) ? d.fila : [];
+  const rec = Array.isArray(d.recusados) ? d.recusados : [];
   $('filaLbl').textContent = `NA FILA · ${fila.length}`;
-  $('lista').innerHTML = fila.length
-    ? fila.map(i => `<li><div class="nm">${esc(i.escolha)}${i.build ? '<span class="tag">BUILD</span>' : ''}<small>${esc(i.quem)}</small></div></li>`).join('')
-    : `<div class="vazio">${a.vazio}</div>`;
+  let h = '';
+  fila.forEach((i, k) => {
+    if (i.origem === 'pontos' && (k === 0 || fila[k - 1].origem !== 'pontos')) h += '<li class="sepl">PEDIDOS COM SUCOS</li>';
+    h += `<li><span class="n">${k + 1}</span><div class="nm">${esc(i.escolha)}${tags(i)}<small>${esc(i.quem)}</small></div>${botoes(i)}</li>`;
+  });
+  if (!fila.length) h += `<li><div class="vazio" style="width:100%">${a.vazio}</div></li>`;
+  if (rec.length) {
+    h += '<li class="sepl">RECUSADOS</li>';
+    rec.forEach(i => { h += `<li class="risc"><span class="n">✕</span><div class="nm"><s>${esc(i.escolha)}</s><small>${esc(i.quem)}</small></div></li>`; });
+  }
+  $('lista').innerHTML = h;
+
+  // feitos hoje
+  const feitos = Array.isArray(d.feitos) ? d.feitos : [];
+  $('feitosCard').hidden = !feitos.length;
+  $('feitos').innerHTML = feitos.map(i => `<li><span class="n">✔</span><div class="nm">${esc(i.escolha)}${i.build ? '<span class="tag">BUILD</span>' : ''}<small>${esc(i.quem)}</small></div></li>`).join('');
 
   $('como').innerHTML = a.como;
   $('btnPix').href = LIVEPIX;
+}
+
+async function rpc(fn, body) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return r.ok;
+  } catch (e) { return false; }
 }
 
 async function buscar() {
@@ -181,6 +273,9 @@ async function buscar() {
     if (!r.ok) throw new Error(r.status);
     dados = Object.fromEntries((await r.json()).map(l => [l.id, l]));
     if (!aba) aba = ABAS[location.hash.slice(1)] ? location.hash.slice(1) : (dados.over?.data?.ativo === true ? 'over' : 'dbd');
+    // o HUD já aplicou o clique (a aba foi atualizada depois dele): libera o botão
+    const upd = new Date(dados[aba]?.updated_at || 0).getTime();
+    Object.keys(pend).forEach(id => { if (upd > pend[id] || Date.now() - pend[id] > 15000) delete pend[id]; });
     render();
   } catch (e) {
     $('pill').textContent = 'sem conexão';
@@ -190,14 +285,51 @@ async function buscar() {
 
 function ciclo() {
   clearInterval(timer);
-  if (!document.hidden) { buscar(); timer = setInterval(buscar, ATUALIZAR_SEG * 1000); }
+  if (!document.hidden) { buscar(); timer = setInterval(buscar, (ADMIN ? ADMIN_SEG : ATUALIZAR_SEG) * 1000); }
 }
+
+/* ---------- MODO ADMIN ---------- */
+function admUI(msg) {
+  if (!ADMIN) return;
+  $('admBox').hidden = false;
+  $('admForm').hidden = !!senha;
+  $('admSair').hidden = !senha;
+  $('admTxt').textContent = msg || (senha
+    ? 'ACEITO vira o AGORA · FEITO vai pro histórico · RECUSADO fica riscado. Chega no HUD em uns 5 s.'
+    : 'Digite a senha do tracker (a mesma do HUD).');
+}
+
+$('admEntrar').addEventListener('click', async () => {
+  const s = $('admSenha').value.trim();
+  if (!s) return;
+  const ok = await rpc('tracker_acao', { segredo: s, p_item: '', p_acao: 'login' });
+  if (ok) { senha = s; try { localStorage.setItem('trkSenha', s); } catch (e) {} }
+  admUI(ok ? '' : 'Senha errada.');
+  render();
+});
+$('admSenha').addEventListener('keydown', e => { if (e.key === 'Enter') $('admEntrar').click(); });
+$('admSair').addEventListener('click', () => {
+  senha = '';
+  try { localStorage.removeItem('trkSenha'); } catch (e) {}
+  admUI(); render();
+});
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.adm button');
+  if (!b) return;
+  const { id, acao } = b.dataset;
+  pend[id] = Date.now();
+  render();
+  const ok = await rpc('tracker_acao', { segredo: senha, p_item: id, p_acao: acao });
+  if (!ok) { delete pend[id]; admUI('Não deu certo. Confira a senha ou a conexão.'); render(); }
+});
 
 $('tabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   aba = b.dataset.aba; history.replaceState(null, '', '#' + aba); render();
 });
 document.addEventListener('visibilitychange', ciclo);
+admUI();
 ciclo();
 </script>
 </body>
