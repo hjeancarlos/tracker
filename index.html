@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap" rel="stylesheet">
 <style>
-@font-face { font-family: 'Evil Vampire'; src: url('EvilVampire.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Evil Vampire'; src: url('EvilVampire-Regular.ttf') format('truetype'); font-display: swap; }
 
 :root {
   --bg: #0b0a0c; --card: #151217; --card2: #1c181f; --line: #2b2530;
@@ -106,9 +106,9 @@ const ATUALIZAR_SEG = 5;    // de quanto em quanto tempo a página busca a fila
 const OFFLINE_MIN   = 30;   // sem atualização há X min = "live offline"
 
 const ABAS = {
-  dbd:  { cor: '--dbd',  agora: 'KILLER AGORA', vazio: 'Nenhum killer na fila. Seja o primeiro!',
+  dbd:  { cor: '--dbd',  agora: 'KILLER AGORA', vazio: 'Nenhum killer na fila. Seja o primeiro!', outro: 'Overwatch',
           como: 'Mande um Pix pelo LivePix com o <b>nome do killer</b> na mensagem.<br><b>R$ 1</b> escolhe o killer · <b>R$ 2</b> escolhe com build (escreva "build").' },
-  over: { cor: '--over', agora: 'HERÓI AGORA',  vazio: 'Nenhum herói na fila. Seja o primeiro!',
+  over: { cor: '--over', agora: 'HERÓI AGORA',  vazio: 'Nenhum herói na fila. Seja o primeiro!', outro: 'DBD',
           como: 'Mande um Pix pelo LivePix com o <b>nome do herói</b> na mensagem.<br><b>R$ 1</b> escolhe o herói da próxima partida.' },
   flix: { cor: '--flix', agora: 'FILME DA SEMANA', vazio: 'Nenhum pedido de filme ainda.',
           como: 'Mande um Pix de <b>R$ 15</b> pelo LivePix com a palavra <b>filme</b> e o nome do filme na mensagem.' }
@@ -127,15 +127,19 @@ function haQuanto(iso) {
   return h < 24 ? `há ${h} h` : `há ${Math.floor(h / 24)} dia(s)`;
 }
 
+// a aba só conta como "com dado" depois que o HUD mandou alguma coisa
+const temDado = d => d && Object.keys(d).length > 0;
+
 function render() {
   if (!aba) return;
   const a = ABAS[aba], linha = dados[aba] || {}, d = linha.data || {};
-  const offline = !linha.updated_at || (Date.now() - new Date(linha.updated_at)) / 60000 > OFFLINE_MIN;
+  const recebeu = temDado(d);
+  const offline = !recebeu || !linha.updated_at || (Date.now() - new Date(linha.updated_at)) / 60000 > OFFLINE_MIN;
   document.documentElement.style.setProperty('--cor', `var(${a.cor})`);
 
   document.querySelectorAll('#tabs button').forEach(b => {
     b.classList.toggle('on', b.dataset.aba === aba);
-    const ativo = b.dataset.aba !== 'flix' && dados[b.dataset.aba]?.data?.ativo;
+    const ativo = b.dataset.aba !== 'flix' && dados[b.dataset.aba]?.data?.ativo === true;
     b.innerHTML = b.textContent.replace(/\s+$/, '') + (ativo ? '<span class="dot"></span>' : '');
   });
 
@@ -143,13 +147,13 @@ function render() {
   let txt = 'Live offline', ok = false;
   if (!offline) {
     if (aba === 'flix') { txt = 'Pedidos abertos'; ok = true; }
-    else if (!d.ativo) txt = aba === 'dbd' ? 'Hoje o jogo é Overwatch' : 'Hoje o jogo é DBD';
+    else if (d.ativo !== true) txt = `Fila pausada · live em ${a.outro}`;
     else if (d.aberta === false) txt = 'Fila fechada';
     else { txt = 'Fila aberta'; ok = true; }
   }
   $('pill').textContent = txt;
   $('pill').className = 'pill' + (ok ? ' ok' : '');
-  $('upd').textContent = linha.updated_at ? 'atualizado ' + haQuanto(linha.updated_at) : '';
+  $('upd').textContent = recebeu && linha.updated_at ? 'atualizado ' + haQuanto(linha.updated_at) : '';
 
   // topo: AGORA (DBD/Over) ou filme da semana (BigoFlix)
   const top = aba === 'flix' ? d.filme : d.atual;
@@ -176,7 +180,7 @@ async function buscar() {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/tracker?select=id,data,updated_at`, { headers: { apikey: SUPABASE_KEY } });
     if (!r.ok) throw new Error(r.status);
     dados = Object.fromEntries((await r.json()).map(l => [l.id, l]));
-    if (!aba) aba = ABAS[location.hash.slice(1)] ? location.hash.slice(1) : (dados.over?.data?.ativo ? 'over' : 'dbd');
+    if (!aba) aba = ABAS[location.hash.slice(1)] ? location.hash.slice(1) : (dados.over?.data?.ativo === true ? 'over' : 'dbd');
     render();
   } catch (e) {
     $('pill').textContent = 'sem conexão';
