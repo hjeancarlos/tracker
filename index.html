@@ -17,6 +17,7 @@
   --cor: var(--dbd);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 body {
   background: radial-gradient(ellipse at top, color-mix(in srgb, var(--cor) 14%, transparent), transparent 60%), var(--bg);
   background-attachment: fixed;
@@ -66,21 +67,38 @@ ol li.risc .n { color: var(--mut); }
 .btn { display: block; text-align: center; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--cor); color: #fff; font-weight: 700; text-decoration: none; letter-spacing: 1px; }
 footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24px; }
 
-/* modo admin (só aparece com ?admin no link e a senha certa) */
+/* ---------- modo admin (só com ?admin no link) ---------- */
 .adm { display: flex; gap: 6px; margin-left: auto; }
-.adm button, .admForm button {
+.adm button, .dlg button {
   background: var(--card2); border: 1px solid var(--line); color: var(--txt);
   font: 700 12px 'Carlito', Calibri, sans-serif; letter-spacing: 1px;
   padding: 6px 10px; border-radius: 8px; cursor: pointer;
 }
-.adm button:hover, .admForm button:hover { border-color: var(--cor); }
-.adm button[data-acao="aceito"] { background: var(--cor); border-color: var(--cor); color: #fff; }
+.adm button:hover, .dlg button:hover { border-color: var(--cor); }
+.adm button[data-acao="aceito"], .dlg button.pri { background: var(--cor); border-color: var(--cor); color: #fff; }
 .adm-wait { margin-left: auto; font-size: 13px; color: var(--mut); }
 .topo-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .topo-row > div:first-child { flex: 1; min-width: 0; }
-.admForm { display: flex; gap: 8px; margin-top: 10px; }
-.admForm input { flex: 1; min-width: 0; background: var(--card2); border: 1px solid var(--line); color: var(--txt); padding: 8px 10px; border-radius: 8px; font: 15px 'Carlito', Calibri, sans-serif; }
-.lnk { background: none; border: 0; color: var(--mut); text-decoration: underline; cursor: pointer; font: 13px 'Carlito', Calibri, sans-serif; margin-top: 8px; }
+
+/* selo no canto: 🔒 deslogado · ● ADMIN logado */
+.adm-badge {
+  position: fixed; right: 16px; bottom: 16px; z-index: 10;
+  background: var(--card); border: 1px solid var(--line); color: var(--mut);
+  font: 700 12px 'Carlito', Calibri, sans-serif; letter-spacing: 1px;
+  padding: 7px 11px; border-radius: 99px; cursor: pointer; opacity: .7; transition: all .2s;
+}
+.adm-badge:hover { opacity: 1; }
+.adm-badge.on { opacity: 1; color: #fff; border-color: var(--cor); }
+.adm-badge.on::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 8px var(--cor); margin-right: 6px; vertical-align: middle; }
+.adm-badge.erro { color: #fff; border-color: var(--dbd); }
+
+/* popup */
+.dlg { margin: auto; width: min(340px, calc(100% - 32px)); background: var(--card); color: var(--txt); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+.dlg::backdrop { background: rgba(0, 0, 0, .6); }
+.dlg input { width: 100%; margin-top: 6px; background: var(--card2); border: 1px solid var(--line); color: var(--txt); padding: 9px 10px; border-radius: 8px; font: 15px 'Carlito', Calibri, sans-serif; }
+.dlg input:focus { outline: none; border-color: var(--cor); }
+.dlg-msg { min-height: 18px; margin-top: 8px; font-size: 13px; color: var(--mut); }
+.dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -99,16 +117,6 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
   <div class="status">
     <span id="pill" class="pill">carregando…</span>
     <span id="upd"></span>
-  </div>
-
-  <div class="card" id="admBox" hidden>
-    <div class="lbl">MODO ADMIN</div>
-    <div class="como" id="admTxt"></div>
-    <div class="admForm" id="admForm">
-      <input id="admSenha" type="password" placeholder="senha do tracker" autocomplete="current-password">
-      <button id="admEntrar">ENTRAR</button>
-    </div>
-    <button class="lnk" id="admSair" hidden>sair do modo admin</button>
   </div>
 
   <div id="topo"></div>
@@ -131,6 +139,23 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
 
   <footer>@tiljhin em todas as redes</footer>
 </div>
+
+<!-- modo admin: selo no canto + popup (só aparecem com ?admin no link) -->
+<button id="admBadge" class="adm-badge" hidden></button>
+<dialog id="admDlg" class="dlg">
+  <form id="admForm">
+    <div class="lbl">MODO ADMIN</div>
+    <div id="admLogin">
+      <input id="admSenha" type="password" placeholder="senha do tracker" autocomplete="current-password">
+    </div>
+    <div class="dlg-msg" id="admMsg"></div>
+    <div class="dlg-btns">
+      <button type="button" id="admFechar">FECHAR</button>
+      <button type="button" id="admSair" class="pri">SAIR</button>
+      <button type="submit" id="admEntrar" class="pri">ENTRAR</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 /* ================= CONFIGURE AQUI ================= */
@@ -289,28 +314,60 @@ function ciclo() {
 }
 
 /* ---------- MODO ADMIN ---------- */
-function admUI(msg) {
+let erroT = null;
+
+// selo do canto: 🔒 deslogado · ● ADMIN logado
+function admUI() {
   if (!ADMIN) return;
-  $('admBox').hidden = false;
-  $('admForm').hidden = !!senha;
-  $('admSair').hidden = !senha;
-  $('admTxt').textContent = msg || (senha
-    ? 'ACEITO vira o AGORA · FEITO vai pro histórico · RECUSADO fica riscado. Chega no HUD em uns 5 s.'
-    : 'Digite a senha do tracker (a mesma do HUD).');
+  const b = $('admBadge');
+  b.hidden = false;
+  b.className = 'adm-badge' + (senha ? ' on' : '');
+  b.textContent = senha ? 'ADMIN' : '🔒';
+  b.title = senha ? 'Modo admin ativo' : 'Entrar no modo admin';
 }
 
-$('admEntrar').addEventListener('click', async () => {
+// erro rápido no selo (some em 4 s)
+function avisar(t) {
+  const b = $('admBadge');
+  b.className = 'adm-badge erro';
+  b.textContent = '⚠ ' + t;
+  clearTimeout(erroT);
+  erroT = setTimeout(admUI, 4000);
+}
+
+function abrirPopup(msg) {
+  $('admLogin').hidden = !!senha;
+  $('admEntrar').hidden = !!senha;
+  $('admSair').hidden = !senha;
+  $('admMsg').textContent = msg || (senha
+    ? 'ACEITO vira o AGORA · FEITO vai pro histórico · RECUSADO fica riscado.'
+    : 'Digite a senha do tracker (a mesma do HUD).');
+  $('admSenha').value = '';
+  $('admDlg').showModal();
+  if (!senha) $('admSenha').focus();
+}
+
+$('admBadge').addEventListener('click', () => abrirPopup());
+$('admFechar').addEventListener('click', () => $('admDlg').close());
+$('admDlg').addEventListener('click', e => { if (e.target === $('admDlg')) $('admDlg').close(); }); // clique fora fecha
+
+$('admForm').addEventListener('submit', async e => {
+  e.preventDefault();
   const s = $('admSenha').value.trim();
   if (!s) return;
+  $('admMsg').textContent = 'conferindo…';
   const ok = await rpc('tracker_acao', { segredo: s, p_item: '', p_acao: 'login' });
-  if (ok) { senha = s; try { localStorage.setItem('trkSenha', s); } catch (e) {} }
-  admUI(ok ? '' : 'Senha errada.');
-  render();
+  if (!ok) { $('admMsg').textContent = 'Senha errada.'; return; }
+  senha = s;
+  try { localStorage.setItem('trkSenha', s); } catch (e) {}
+  $('admDlg').close();
+  admUI(); render();
 });
-$('admSenha').addEventListener('keydown', e => { if (e.key === 'Enter') $('admEntrar').click(); });
+
 $('admSair').addEventListener('click', () => {
   senha = '';
   try { localStorage.removeItem('trkSenha'); } catch (e) {}
+  $('admDlg').close();
   admUI(); render();
 });
 
@@ -321,7 +378,7 @@ document.addEventListener('click', async e => {
   pend[id] = Date.now();
   render();
   const ok = await rpc('tracker_acao', { segredo: senha, p_item: id, p_acao: acao });
-  if (!ok) { delete pend[id]; admUI('Não deu certo. Confira a senha ou a conexão.'); render(); }
+  if (!ok) { delete pend[id]; avisar('erro'); render(); }
 });
 
 $('tabs').addEventListener('click', e => {
