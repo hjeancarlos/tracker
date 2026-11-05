@@ -26,7 +26,7 @@ body {
 }
 .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 40px; }
 
-header { text-align: center; margin-bottom: 22px; }
+header { position: relative; text-align: center; margin-bottom: 22px; }
 .logo { font-family: 'Evil Vampire', Georgia, serif; font-size: 44px; letter-spacing: 2px; color: var(--cor); text-shadow: 0 0 18px color-mix(in srgb, var(--cor) 45%, transparent); transition: color .4s; }
 .sub { color: var(--mut); font-size: 15px; margin-top: 2px; }
 
@@ -80,15 +80,15 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
 .topo-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .topo-row > div:first-child { flex: 1; min-width: 0; }
 
-/* selo no canto: 🔒 deslogado · ● ADMIN logado */
+/* selo no topo, à direita (em cima do BIGOFLIX): 🔒 deslogado · ● ADMIN logado */
 .adm-badge {
-  position: fixed; right: 16px; bottom: 16px; z-index: 10;
-  background: var(--card); border: 1px solid var(--line); color: var(--mut);
+  position: absolute; top: 0; right: 0;
+  background: var(--card); border: 1px solid var(--line); color: var(--txt);
   font: 700 12px 'Carlito', Calibri, sans-serif; letter-spacing: 1px;
-  padding: 7px 11px; border-radius: 99px; cursor: pointer; opacity: .7; transition: all .2s;
+  padding: 7px 11px; border-radius: 99px; cursor: pointer; transition: all .2s;
 }
-.adm-badge:hover { opacity: 1; }
-.adm-badge.on { opacity: 1; color: #fff; border-color: var(--cor); }
+.adm-badge:hover { border-color: var(--cor); }
+.adm-badge.on { color: #fff; border-color: var(--cor); background: color-mix(in srgb, var(--cor) 18%, var(--card)); }
 .adm-badge.on::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 8px var(--cor); margin-right: 6px; vertical-align: middle; }
 .adm-badge.erro { color: #fff; border-color: var(--dbd); }
 
@@ -106,6 +106,8 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
   <header>
     <div class="logo">TIL JHIN</div>
     <div class="sub">Acompanhe a fila da live · Bigodinhos</div>
+    <!-- modo admin: selo (só aparece com ?admin no link) -->
+    <button id="admBadge" class="adm-badge" hidden></button>
   </header>
 
   <nav id="tabs">
@@ -140,8 +142,7 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
   <footer>@tiljhin em todas as redes</footer>
 </div>
 
-<!-- modo admin: selo no canto + popup (só aparecem com ?admin no link) -->
-<button id="admBadge" class="adm-badge" hidden></button>
+<!-- modo admin: popup -->
 <dialog id="admDlg" class="dlg">
   <form id="admForm">
     <div class="lbl">MODO ADMIN</div>
@@ -316,13 +317,13 @@ function ciclo() {
 /* ---------- MODO ADMIN ---------- */
 let erroT = null;
 
-// selo do canto: 🔒 deslogado · ● ADMIN logado
+// selo do topo: 🔒 deslogado · ● ADMIN logado
 function admUI() {
   if (!ADMIN) return;
   const b = $('admBadge');
   b.hidden = false;
   b.className = 'adm-badge' + (senha ? ' on' : '');
-  b.textContent = senha ? 'ADMIN' : '🔒';
+  b.textContent = senha ? 'ADMIN' : '🔒 ADMIN';
   b.title = senha ? 'Modo admin ativo' : 'Entrar no modo admin';
 }
 
