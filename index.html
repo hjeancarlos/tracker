@@ -46,6 +46,7 @@ nav button .dot { display: inline-block; width: 8px; height: 8px; border-radius:
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
 .lbl { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--cor); margin-bottom: 6px; }
+.lbl small { color: var(--mut); font-weight: 700; letter-spacing: 1px; margin-left: 6px; }
 .big { font-family: 'Evil Vampire', Georgia, serif; font-size: 34px; line-height: 1.1; word-break: break-word; }
 .who { color: var(--mut); margin-top: 4px; font-size: 15px; }
 .tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--cor) 40%, transparent); vertical-align: middle; }
@@ -66,6 +67,28 @@ ol li.risc .n { color: var(--mut); }
 .como b { color: var(--txt); }
 .btn { display: block; text-align: center; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--cor); color: #fff; font-weight: 700; text-decoration: none; letter-spacing: 1px; }
 footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24px; }
+
+/* ---------- calendário (histórico de feitos) ---------- */
+.cal { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 6px; }
+@media (max-width: 560px) { .cal { grid-template-columns: 1fr; } }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-head button { background: none; border: 0; color: var(--cor); font: 700 22px 'Carlito', Calibri, sans-serif; cursor: pointer; padding: 0 8px; line-height: 1; }
+.cal-head button:disabled { opacity: .2; cursor: default; }
+.cal-mes { font-weight: 700; font-size: 16px; text-transform: capitalize; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--mut); text-align: center; padding: 4px 0; }
+.cal-dia {
+  position: relative; aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
+  background: var(--card2); color: var(--mut); font: 700 13px 'Carlito', Calibri, sans-serif; cursor: default;
+}
+.cal-dia.tem { color: var(--txt); cursor: pointer; border-color: color-mix(in srgb, var(--cor) 40%, transparent); }
+.cal-dia.tem:hover { border-color: var(--cor); }
+.cal-dia.hoje { outline: 1px dashed var(--mut); outline-offset: -3px; }
+.cal-dia.sel { background: var(--cor); border-color: var(--cor); color: #fff; }
+.cal-n { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--cor); }
+.cal-dia.sel .cal-n { color: #fff; }
+.cal-tit { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--cor); padding-bottom: 8px; border-bottom: 2px solid var(--cor); margin-bottom: 4px; }
+.cal-lista { max-height: 320px; overflow-y: auto; }
 
 /* ---------- modo admin (só com ?admin no link) ---------- */
 .adm { display: flex; gap: 6px; margin-left: auto; }
@@ -129,8 +152,26 @@ footer { text-align: center; color: var(--mut); font-size: 13px; margin-top: 24p
   </div>
 
   <div class="card" id="feitosCard" hidden>
-    <div class="lbl">FEITOS HOJE</div>
+    <div class="lbl">FEITOS NESTA LIVE</div>
     <ol id="feitos"></ol>
+  </div>
+
+  <div class="card">
+    <div class="lbl">HISTÓRICO<small id="calTot"></small></div>
+    <div class="cal">
+      <div>
+        <div class="cal-head">
+          <button id="calPrev" aria-label="Mês anterior">‹</button>
+          <span class="cal-mes" id="calMes"></span>
+          <button id="calNext" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div>
+        <div class="cal-tit" id="calTit"></div>
+        <ol class="cal-lista" id="calLista"></ol>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -165,6 +206,7 @@ const SUPABASE_KEY = 'sb_publishable_ZsrsSUmFlaPBKu_OeTGbMQ_zFKihTo4';   // a p�
 const LIVEPIX      = 'https://livepix.gg/tiljhin';
 const ATUALIZAR_SEG = 5;    // de quanto em quanto tempo a página busca a fila
 const ADMIN_SEG     = 2;    // no modo admin, busca mais rápido
+const CAL_SEG       = 60;   // de quanto em quanto tempo o calendário se atualiza
 const OFFLINE_MIN   = 30;   // sem atualização há X min = "live offline"
 
 const ABAS = {
@@ -181,6 +223,7 @@ const TAGS = { doacao: 'PIX', sub: 'SUB', resub: 'RESUB', gift: 'GIFT', pontos: 
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
 let dados = {}, aba = null, timer = null;
 
 // modo admin: link com ?admin · a senha fica salva só neste navegador
@@ -273,15 +316,84 @@ function render() {
   }
   $('lista').innerHTML = h;
 
-  // feitos hoje
+  // feitos nesta live
   const feitos = Array.isArray(d.feitos) ? d.feitos : [];
   $('feitosCard').hidden = !feitos.length;
   $('feitos').innerHTML = feitos.map(i => `<li><span class="n">✔</span><div class="nm">${esc(i.escolha)}${i.build ? '<span class="tag">BUILD</span>' : ''}<small>${esc(i.quem)}</small></div></li>`).join('');
 
   $('como').innerHTML = a.como;
   $('btnPix').href = LIVEPIX;
+
+  renderCal();
 }
 
+/* ---------- CALENDÁRIO (histórico de feitos, por dia) ---------- */
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const hojeD = new Date();
+const cal = { y: hojeD.getFullYear(), m: hojeD.getMonth(), dia: null, linhas: [] };
+
+async function carregarMes() {
+  const ini = new Date(cal.y, cal.m, 1).toISOString();
+  const fim = new Date(cal.y, cal.m + 1, 1).toISOString();
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tracker_hist?select=aba,quem,escolha,build,origem,feito_em&and=(feito_em.gte.${ini},feito_em.lt.${fim})&order=feito_em.asc`,
+      { headers: { apikey: SUPABASE_KEY } });
+    if (!r.ok) return;
+    cal.linhas = await r.json();
+    renderCal();
+  } catch (e) {}
+}
+
+function renderCal() {
+  if (!aba) return;
+  const porDia = {};
+  cal.linhas.filter(l => l.aba === aba).forEach(l => {
+    const d = new Date(l.feito_em).getDate();
+    (porDia[d] = porDia[d] || []).push(l);
+  });
+  const dias = Object.keys(porDia).map(Number);
+  const totalMes = dias.reduce((s, d) => s + porDia[d].length, 0);
+
+  // dia aberto: o escolhido · senão hoje (se tiver pedido) · senão o último dia com pedido
+  const ehMesAtual = cal.y === hojeD.getFullYear() && cal.m === hojeD.getMonth();
+  let dia = cal.dia;
+  if (!dia || !porDia[dia]) dia = (ehMesAtual && porDia[hojeD.getDate()]) ? hojeD.getDate() : (dias.length ? Math.max(...dias) : null);
+
+  $('calMes').textContent = `${MESES[cal.m]} ${cal.y}`;
+  $('calNext').disabled = ehMesAtual;
+  $('calTot').textContent = totalMes ? `· ${totalMes} no mês` : '';
+
+  let g = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'].map(x => `<div class="cal-dow">${x}</div>`).join('');
+  const primeiro = new Date(cal.y, cal.m, 1).getDay();
+  const total = new Date(cal.y, cal.m + 1, 0).getDate();
+  for (let i = 0; i < primeiro; i++) g += '<div></div>';
+  for (let d = 1; d <= total; d++) {
+    const n = (porDia[d] || []).length;
+    const cls = 'cal-dia' + (n ? ' tem' : '') + (ehMesAtual && d === hojeD.getDate() ? ' hoje' : '') + (d === dia ? ' sel' : '');
+    g += `<button class="${cls}" data-dia="${d}"${n ? '' : ' disabled'}>${d}${n ? `<span class="cal-n">${n}</span>` : ''}</button>`;
+  }
+  $('calGrid').innerHTML = g;
+
+  const lista = dia ? porDia[dia] : [];
+  $('calTit').textContent = dia ? `FEITOS EM ${pad(dia)}/${pad(cal.m + 1)}/${cal.y}` : 'NENHUM PEDIDO FEITO NESTE MÊS';
+  $('calLista').innerHTML = lista.length
+    ? lista.map(l => {
+        const t = new Date(l.feito_em);
+        return `<li><span class="n">✔</span><div class="nm">${esc(l.escolha)}${tags(l)}<small>${esc(l.quem)} · ${pad(t.getHours())}:${pad(t.getMinutes())}</small></div></li>`;
+      }).join('')
+    : `<li><div class="vazio" style="width:100%">Os dias marcados no calendário têm pedidos feitos.</div></li>`;
+}
+
+$('calGrid').addEventListener('click', e => {
+  const b = e.target.closest('.cal-dia.tem');
+  if (!b) return;
+  cal.dia = parseInt(b.dataset.dia, 10);
+  renderCal();
+});
+$('calPrev').addEventListener('click', () => { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } cal.dia = null; cal.linhas = []; renderCal(); carregarMes(); });
+$('calNext').addEventListener('click', () => { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } cal.dia = null; cal.linhas = []; renderCal(); carregarMes(); });
+
+/* ---------- BUSCA ---------- */
 async function rpc(fn, body) {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -309,9 +421,15 @@ async function buscar() {
   }
 }
 
+let calTimer = null;
 function ciclo() {
   clearInterval(timer);
-  if (!document.hidden) { buscar(); timer = setInterval(buscar, (ADMIN ? ADMIN_SEG : ATUALIZAR_SEG) * 1000); }
+  clearInterval(calTimer);
+  if (document.hidden) return;
+  buscar();
+  carregarMes();
+  timer = setInterval(buscar, (ADMIN ? ADMIN_SEG : ATUALIZAR_SEG) * 1000);
+  calTimer = setInterval(carregarMes, CAL_SEG * 1000);
 }
 
 /* ---------- MODO ADMIN ---------- */
@@ -380,11 +498,12 @@ document.addEventListener('click', async e => {
   render();
   const ok = await rpc('tracker_acao', { segredo: senha, p_item: id, p_acao: acao });
   if (!ok) { delete pend[id]; avisar('erro'); render(); }
+  else if (acao === 'feito') setTimeout(carregarMes, 8000); // o calendário pega o feito novo logo
 });
 
 $('tabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  aba = b.dataset.aba; history.replaceState(null, '', '#' + aba); render();
+  aba = b.dataset.aba; cal.dia = null; history.replaceState(null, '', '#' + aba); render();
 });
 document.addEventListener('visibilitychange', ciclo);
 admUI();
